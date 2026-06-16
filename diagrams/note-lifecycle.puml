@@ -1,0 +1,76 @@
+@startuml Activity diagram
+
+start
+
+:Приложение загружено;
+
+partition "Загрузка данных" {
+  :loadNotes() → чтение LocalStorage;
+  if (Данные есть?) then (да)
+    :notes = JSON.parse(data);
+  else (нет)
+    :notes = [];
+  endif
+  :render() → отображение списка;
+}
+
+repeat
+  partition "Действия пользователя" {
+    if (Пользователь выбирает действие) then (Поиск)
+      :Ввод в search input;
+      :getFilteredNotes()\nфильтрация по тексту/тегам;
+      :render() → обновление списка;
+      :aria-live: «Найдено заметок: N»;
+
+    elseif (Создать) then
+      :openAddDialog();
+      :Заполнение формы;
+      if (Заголовок пуст?) then (да)
+        :Ошибка валидации\naria-invalid, role="alert";
+      else (нет)
+        :notes.push(note);
+        :saveNotes();
+        :aria-live: «Заметка создана.»;
+      endif
+
+    elseif (Редактировать) then
+      :openEditDialog(note);
+      :Изменение полей;
+      :Счётчик символов\nupdateBodyCounter();
+      if (Заголовок пуст?) then (да)
+        :Ошибка валидации;
+      else (нет)
+        :Обновление note в массиве;
+        :saveNotes();
+        :aria-live: «Заметка обновлена.»;
+      endif
+
+    elseif (Удалить) then
+      :openConfirmDialog(note);
+      if (Подтверждено?) then (да)
+        :notes.filter() — удаление;
+        :saveNotes();
+      else (нет)
+        :Закрытие диалога\nфокус на кнопку удаления;
+      endif
+
+    elseif (Экспорт) then
+      :exportNotes();
+      if (Заметок нет?) then (да)
+        :aria-live: «Нечего экспортировать»;
+      else (нет)
+        :JSON.stringify() → Blob;\nскачивание файла notes-ДАТА.json;
+        :aria-live: «Экспортировано: N»;
+      endif
+
+    endif
+  }
+
+  :closeNoteDialog() / closeConfirmDialog()\nвозврат фокуса (lastFocused);
+  :render() → обновление интерфейса;
+
+repeat while (Приложение открыто?) is (да)
+
+stop
+
+@enduml

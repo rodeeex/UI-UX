@@ -1,0 +1,59 @@
+@startuml Component Diagram
+!theme plain
+
+package "UI Layer (HTML)" {
+  [Skip Link] as Skip
+  [Header] as Hdr
+  [Toolbar\n(role=search)] as Toolbar
+  [Search Input] as Search
+  [Add Button] as AddBtn
+  [Export Button] as ExportBtn
+  [Results Status\n(aria-live)] as Status
+  [Notes List\n(ul)] as NotesList
+  [Empty Message\n(aria-live)] as EmptyMsg
+}
+
+package "Dialogs (HTML <dialog>)" {
+  [Note Dialog\n(aria-labelledby)] as NoteDlg
+  [Confirm Dialog\n(aria-labelledby)] as ConfirmDlg
+}
+
+package "JavaScript Logic" {
+  [loadNotes()] as Load
+  [saveNotes()] as Save
+  [generateId()] as GenId
+  [formatDate()] as FmtDate
+  [getFilteredNotes()] as Filter
+  [render()] as Render
+  [buildNoteCard()] as Build
+  [openAddDialog()] as OpenAdd
+  [openEditDialog()] as OpenEdit
+  [openConfirmDialog()] as OpenConf
+  [exportNotes()] as Export
+  [updateBodyCounter()] as Counter
+}
+
+database "LocalStorage\n(notes-app-data-v1)" as LS
+
+Skip --> Hdr
+Hdr --> Toolbar
+Toolbar --> Search
+Toolbar --> AddBtn
+Toolbar --> ExportBtn
+Status --> NotesList
+NotesList --> EmptyMsg
+AddBtn --> NoteDlg : открывает
+NotesList --> NoteDlg : редактировать
+NotesList --> ConfirmDlg : удалить
+
+Load --> LS : чтение
+Save --> LS : запись
+Filter --> Render
+Render --> Build
+OpenAdd --> NoteDlg
+OpenEdit --> NoteDlg
+OpenConf --> ConfirmDlg
+Export --> LS : чтение
+Counter --> NoteDlg
+
+@enduml

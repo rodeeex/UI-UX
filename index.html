@@ -203,7 +203,9 @@
                 display: flex;
                 flex-wrap: wrap;
                 gap: 0.4rem;
-                margin-bottom: 0.5rem;
+                margin: 0 0 0.5rem;
+                padding: 0;
+                list-style: none;
             }
 
             .tag {
@@ -295,8 +297,8 @@
             <h1>Заметки с тегами</h1>
         </header>
 
-        <main id="main">
-            <div class="toolbar">
+        <main id="main" tabindex="-1">
+            <div class="toolbar" role="search" aria-label="Поиск заметок">
                 <div class="search-field">
                     <label for="search">Поиск по тексту или тегам</label>
                     <input
@@ -306,15 +308,28 @@
                         placeholder="Например: работа"
                     />
                 </div>
-                <button type="button" id="add-btn" class="btn btn-primary">
+                <button
+                    type="button"
+                    id="add-btn"
+                    class="btn btn-primary"
+                    aria-haspopup="dialog"
+                >
                     Добавить заметку
+                </button>
+                <button type="button" id="export-btn" class="btn btn-secondary">
+                    Экспорт JSON
                 </button>
             </div>
 
-            <p id="results-status" class="status-line" aria-live="polite"></p>
+            <p
+                id="results-status"
+                class="status-line"
+                aria-live="polite"
+                aria-atomic="true"
+            ></p>
 
             <ul id="notes-list" aria-label="Список заметок"></ul>
-            <p id="empty-message" hidden></p>
+            <p id="empty-message" hidden aria-live="polite"></p>
         </main>
 
         <dialog id="note-dialog" aria-labelledby="dialog-title">
@@ -327,6 +342,7 @@
                         type="text"
                         id="note-title"
                         name="note-title"
+                        autocomplete="off"
                         aria-describedby="title-error"
                         required
                     />
@@ -342,13 +358,19 @@
                         type="text"
                         id="note-tags"
                         name="note-tags"
+                        autocomplete="off"
                         aria-describedby="tags-hint"
                     />
                 </div>
 
                 <div class="field">
                     <label for="note-body">Текст заметки</label>
-                    <textarea id="note-body" name="note-body"></textarea>
+                    <textarea
+                        id="note-body"
+                        name="note-body"
+                        autocomplete="off"
+                    ></textarea>
+                    <span id="body-counter" class="field-hint"></span>
                 </div>
 
                 <div class="dialog-actions">
@@ -420,6 +442,8 @@
                 document.getElementById("confirm-delete-btn");
             const confirmCancelBtn =
                 document.getElementById("confirm-cancel-btn");
+            const bodyCounter = document.getElementById("body-counter");
+            const exportBtn = document.getElementById("export-btn");
 
             function loadNotes() {
                 try {
@@ -454,6 +478,25 @@
                     hour: "2-digit",
                     minute: "2-digit",
                 });
+            }
+
+            function exportNotes() {
+                if (notes.length === 0) {
+                    resultsStatus.textContent =
+                        "Нечего экспортировать: заметок нет.";
+                    return;
+                }
+                const data = JSON.stringify(notes, null, 2);
+                const blob = new Blob([data], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download =
+                    "notes-" + new Date().toISOString().slice(0, 10) + ".json";
+                a.click();
+                URL.revokeObjectURL(url);
+                resultsStatus.textContent =
+                    "Экспортировано заметок: " + notes.length;
             }
 
             function getFilteredNotes() {
@@ -499,23 +542,19 @@
                 const li = document.createElement("li");
                 li.className = "note-card";
 
-                const heading = document.createElement("h3");
+                const heading = document.createElement("h2");
                 heading.textContent = note.title;
                 li.appendChild(heading);
 
                 if (note.tags.length) {
-                    const tagsWrap = document.createElement("div");
+                    const tagsWrap = document.createElement("ul");
                     tagsWrap.className = "tags";
-                    tagsWrap.setAttribute(
-                        "aria-label",
-                        "Теги: " + note.tags.join(", "),
-                    );
+                    tagsWrap.setAttribute("aria-label", "Теги заметки");
                     note.tags.forEach((tag) => {
-                        const span = document.createElement("span");
-                        span.className = "tag";
-                        span.textContent = tag;
-                        span.setAttribute("aria-hidden", "true");
-                        tagsWrap.appendChild(span);
+                        const tagItem = document.createElement("li");
+                        tagItem.className = "tag";
+                        tagItem.textContent = tag;
+                        tagsWrap.appendChild(tagItem);
                     });
                     li.appendChild(tagsWrap);
                 }
@@ -546,6 +585,7 @@
                     "aria-label",
                     "Редактировать заметку «" + note.title + "»",
                 );
+                editBtn.setAttribute("aria-haspopup", "dialog");
                 editBtn.addEventListener("click", () =>
                     openEditDialog(note, editBtn),
                 );
@@ -554,6 +594,7 @@
                 deleteBtn.type = "button";
                 deleteBtn.className = "btn btn-danger";
                 deleteBtn.textContent = "Удалить";
+                deleteBtn.setAttribute("aria-haspopup", "dialog");
                 deleteBtn.setAttribute(
                     "aria-label",
                     "Удалить заметку «" + note.title + "»",
@@ -573,6 +614,7 @@
                 lastFocused = addBtn;
                 dialogTitle.textContent = "Новая заметка";
                 noteForm.reset();
+                bodyCounter.textContent = "";
                 clearTitleError();
                 noteDialog.showModal();
                 titleInput.focus();
@@ -585,6 +627,7 @@
                 titleInput.value = note.title;
                 tagsInput.value = note.tags.join(", ");
                 bodyInput.value = note.body;
+                updateBodyCounter();
                 clearTitleError();
                 noteDialog.showModal();
                 titleInput.focus();
@@ -593,6 +636,11 @@
             function clearTitleError() {
                 titleError.textContent = "";
                 titleInput.removeAttribute("aria-invalid");
+            }
+
+            function updateBodyCounter() {
+                const len = bodyInput.value.length;
+                bodyCounter.textContent = len > 0 ? "Символов: " + len : "";
             }
 
             function closeNoteDialog() {
@@ -637,6 +685,9 @@
                 }
 
                 saveNotes();
+                resultsStatus.textContent = editingId
+                    ? "Заметка обновлена."
+                    : "Заметка создана.";
                 closeNoteDialog();
                 render();
             });
@@ -648,8 +699,11 @@
                 closeNoteDialog();
             });
 
+            bodyInput.addEventListener("input", updateBodyCounter);
+
             function openConfirmDialog(note) {
                 noteToDelete = note;
+                lastFocused = document.activeElement;
                 confirmText.textContent =
                     "Заметка «" +
                     note.title +
@@ -661,7 +715,7 @@
             function closeConfirmDialog() {
                 confirmDialog.close();
                 noteToDelete = null;
-                addBtn.focus();
+                if (lastFocused) lastFocused.focus();
             }
 
             confirmDeleteBtn.addEventListener("click", () => {
@@ -682,6 +736,7 @@
 
             addBtn.addEventListener("click", openAddDialog);
             searchInput.addEventListener("input", render);
+            exportBtn.addEventListener("click", exportNotes);
 
             render();
         </script>

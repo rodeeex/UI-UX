@@ -1,0 +1,45 @@
+@startuml Sequence diagram
+!theme plain
+
+actor "Пользователь" as U
+participant "Browser\n(index.html)" as B
+participant "NoteDialog\n(<dialog>)" as D
+participant "render()" as R
+database "LocalStorage" as LS
+
+== Открытие диалога ==
+U -> B: Нажимает «Добавить заметку»
+B -> B: openAddDialog()
+B -> B: editingId = null
+B -> B: lastFocused = addBtn
+B -> B: noteForm.reset()
+B -> D: noteDialog.showModal()
+B -> D: titleInput.focus()
+
+== Заполнение формы ==
+U -> D: Вводит заголовок «Покупки»
+U -> D: Вводит теги «дела, дом»
+U -> D: Вводит текст «Купить молоко и хлеб»
+
+== Отправка формы ==
+U -> D: Нажимает «Сохранить» (submit)
+D -> B: noteForm submit event
+B -> B: e.preventDefault()
+B -> B: Валидация заголовка (не пустой)
+
+alt Заголовок пуст
+  B -> D: titleError.textContent = "..."
+  B -> D: aria-invalid = "true"
+  B -> D: titleInput.focus()
+else Заголовок заполнен
+  B -> B: Парсинг тегов (split + trim)
+  B -> B: Создание объекта Note
+  B -> B: notes.push(note)
+  B -> LS: saveNotes() → localStorage.setItem()
+  B -> B: resultsStatus = «Заметка создана.»
+  B -> D: closeNoteDialog()
+  B -> R: render()
+  B -> R: Обновление списка заметок
+end
+
+@enduml

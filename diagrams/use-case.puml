@@ -1,0 +1,36 @@
+@startuml Use Case diagram
+!theme plain
+
+left to right direction
+
+actor "Пользователь" as User
+
+rectangle "Notes App (Заметки с тегами)" {
+  usecase "Создать заметку" as UC1
+  usecase "Редактировать заметку" as UC2
+  usecase "Удалить заметку" as UC3
+  usecase "Искать заметки\nпо тексту и тегам" as UC4
+  usecase "Добавить теги\nк заметке" as UC5
+  usecase "Экспортировать\nзаметки в JSON" as UC6
+
+  UC1 ..> UC5 : <<extend>>
+  UC2 ..> UC5 : <<extend>>
+}
+
+User --> UC1
+User --> UC2
+User --> UC3
+User --> UC4
+User --> UC6
+
+note bottom of UC4
+  Поиск по заголовку,
+  тексту тела и тегам
+end note
+
+note bottom of UC6
+  Скачивание всех заметок
+  в формате JSON-файла
+end note
+
+@enduml
